@@ -28,16 +28,21 @@ VOICE_CHAT_TIMING=1 voice-chat --text こんにちは  # 声が出るまでの�
 
 ### VOICEVOX ENGINE を入れる
 
-Docker で動かすのがいちばん手軽。公式の手順に、常駐させる指定（--name と --restart）を足したもの。
+Docker で動かすのがいちばん手軽。NVIDIA の GPU があれば GPU 版にする（声を作る時間が CPU 版の 10 分の 1 ほどになり、VRAM は 770MiB ほど使う）。
+コンテナから GPU を使うには nvidia-container-toolkit が要る。
 
 ```sh
-docker pull voicevox/voicevox_engine:cpu-latest
-docker run -d --name voicevox --restart unless-stopped \
-  -p '127.0.0.1:50021:50021' voicevox/voicevox_engine:cpu-latest
+sudo pacman -S docker nvidia-container-toolkit   # Arch 系
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl enable --now docker && sudo systemctl restart docker
+
+docker pull voicevox/voicevox_engine:nvidia-latest
+docker run -d --name voicevox --restart unless-stopped --gpus all \
+  -p '127.0.0.1:50021:50021' voicevox/voicevox_engine:nvidia-latest
 curl http://127.0.0.1:50021/version   # 動いたか確かめる
 ```
 
-GPU 版は `voicevox/voicevox_engine:nvidia-latest` に `--gpus all` を付ける。
+GPU がなければ `voicevox/voicevox_engine:cpu-latest` を `--gpus all` なしで動かす。
 Docker を使わない場合は、[公式リリース](https://github.com/VOICEVOX/voicevox_engine/releases/latest)からエンジンを落とすか、
 [VOICEVOX](https://voicevox.hiroshiba.jp/) のエディタを起動しておく（起動中はエンジンも 50021 番で動く）。
 
