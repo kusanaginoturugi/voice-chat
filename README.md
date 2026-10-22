@@ -26,6 +26,21 @@ VOICE_CHAT_TIMING=1 voice-chat --text こんにちは  # 声が出るまでの�
 - whisper-server（whisper.cpp）、llama-server（llama.cpp）、VOICEVOX ENGINE
 - PipeWire（pw-record と pw-play）
 
+### VOICEVOX ENGINE を入れる
+
+Docker で動かすのがいちばん手軽。公式の手順に、常駐させる指定（--name と --restart）を足したもの。
+
+```sh
+docker pull voicevox/voicevox_engine:cpu-latest
+docker run -d --name voicevox --restart unless-stopped \
+  -p '127.0.0.1:50021:50021' voicevox/voicevox_engine:cpu-latest
+curl http://127.0.0.1:50021/version   # 動いたか確かめる
+```
+
+GPU 版は `voicevox/voicevox_engine:nvidia-latest` に `--gpus all` を付ける。
+Docker を使わない場合は、[公式リリース](https://github.com/VOICEVOX/voicevox_engine/releases/latest)からエンジンを落とすか、
+[VOICEVOX](https://voicevox.hiroshiba.jp/) のエディタを起動しておく（起動中はエンジンも 50021 番で動く）。
+
 つなぎ先とモデルは環境変数で変えられる。一覧は `voice-chat` の先頭のコメントに書いてある。
 
 ## キャラクター
