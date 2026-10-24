@@ -1,0 +1,55 @@
+#!/bin/sh
+# voice-chat と voicevox-trim を、リポジトリへのリンクとして配置し、voicevox-trim のタイマーを有効にする。
+#   ~/.local/bin/voice-chat                    → voice-chat
+#   ~/.config/systemd/user/voicevox-trim.*     → systemd/
+# 配置先にリンクでない別のファイルがあれば、差分を出して何もせず止まる。-f で置き換える（元のファイルは .bak に残す）。
+set -eu
+
+cd "$(dirname "$0")"
+repo=$(pwd)
+
+force=
+case ${1:-} in
+  -f) force=1 ;;
+  "") ;;
+  *) printf '%s\n' "usage: deploy [-f]" >&2; exit 64 ;;
+esac
+
+unit_dir=$HOME/.config/systemd/user
+
+pairs() {
+  printf '%s %s\n' voice-chat "$HOME/.local/bin/voice-chat"
+  for f in voicevox-trim.service voicevox-trim.timer; do
+    printf '%s %s\n' "systemd/$f" "$unit_dir/$f"
+  done
+}
+
+conflict=
+while read -r src dst; do
+  [ -e "$dst" ] || [ -L "$dst" ] || continue
+  [ "$(readlink "$dst" 2>/dev/null)" = "$repo/$src" ] && continue
+  printf 'リポジトリへのリンクではない: %s\n' "$dst" >&2
+  [ -f "$dst" ] && { diff -u "$src" "$dst" >&2 || true; }
+  conflict=1
+done <<LIST
+$(pairs)
+LIST
+
+if [ -n "$conflict" ] && [ -z "$force" ]; then
+  printf '%s\n' "止めた。配置先の変更をリポジトリへ取り込むか、deploy -f で置き換える。" >&2
+  exit 1
+fi
+
+while read -r src dst; do
+  [ "$(readlink "$dst" 2>/dev/null)" = "$repo/$src" ] && continue
+  mkdir -p "$(dirname "$dst")"
+  [ -e "$dst" ] && [ ! -L "$dst" ] && mv "$dst" "$dst.bak"
+  ln -sfn "$repo/$src" "$dst"
+  printf 'linked %s -> %s\n' "$dst" "$repo/$src"
+done <<LIST
+$(pairs)
+LIST
+
+systemctl --user daemon-reload
+systemctl --user enable --now voicevox-trim.timer >/dev/null 2>&1
+printf '%s\n' "voicevox-trim.timer を有効にした"

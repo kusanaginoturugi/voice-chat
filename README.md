@@ -56,11 +56,12 @@ VOICEVOX は、使った声のモデルを GPU に置いたままにし、一度
 再起動は数秒で終わる。
 
 ```sh
-ln -sf ~/src/voice-chat/systemd/voicevox-trim.service ~/src/voice-chat/systemd/voicevox-trim.timer ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now voicevox-trim.timer   # 5 分おきに見る
-journalctl --user -u voicevox-trim                  # 再起動したかどうか
+./deploy                              # voice-chat と voicevox-trim のリンクを置き、タイマーを有効にする（5 分おきに見る）
+journalctl --user -u voicevox-trim    # 再起動したかどうか
 ```
+
+`./deploy` は `~/.local/bin/voice-chat` と `~/.config/systemd/user/voicevox-trim.{service,timer}` を、リポジトリへのリンクとして置く。
+配置先にリンクでない別のファイルがあると差分を出して止まり、`./deploy -f` で置き換える（元のファイルは `.bak` に残す）。
 
 上限は `VOICEVOX_TRIM_MIB`、待つ時間は `VOICEVOX_TRIM_IDLE`（既定 `10m`）で変えられる。
 
