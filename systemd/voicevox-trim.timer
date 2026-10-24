@@ -1,0 +1,9 @@
+[Unit]
+Description=VOICEVOX の VRAM を 5 分おきに見る
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

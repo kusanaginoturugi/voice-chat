@@ -1,0 +1,34 @@
+#!/bin/bash
+# VOICEVOX ENGINE（Docker の voicevox コンテナ）の VRAM が増えていて、しばらく使われていなければ再起動する。
+#
+# VOICEVOX は、使った声のモデルを GPU に置いたままにし、一度確保した GPU のメモリも手放さない
+# （歌わせると 3GB ほどになる）。再起動すれば 0.2GB ほどに戻り、数秒で使えるようになる。
+# systemd/voicevox-trim.timer から 5 分おきに呼ぶ。
+#
+#   VOICEVOX_TRIM_MIB    これを超えたら再起動する（MiB、既定 1500）
+#   VOICEVOX_TRIM_IDLE   この時間リクエストがなければ「使われていない」とみなす（docker logs --since の書き方、既定 10m）
+#   VOICEVOX_CONTAINER   コンテナの名前（既定 voicevox）
+set -eu
+limit=${VOICEVOX_TRIM_MIB:-1500}
+idle=${VOICEVOX_TRIM_IDLE:-10m}
+name=${VOICEVOX_CONTAINER:-voicevox}
+
+[ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" = true ] || exit 0
+
+# コンテナの中のプロセスの PID を、nvidia-smi の一覧と突き合わせて VRAM を足す
+pids=" $(docker top "$name" -eo pid | tail -n +2 | tr '\n' ' ') "
+used=0
+while IFS=', ' read -r pid mib; do
+    case "$pids" in *" $pid "*) used=$((used + mib)) ;; esac
+done < <(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits)
+
+if [ "$used" -le "$limit" ]; then
+    exit 0
+fi
+# 合成のリクエスト（GET の一覧取得以外）が最近あったら、使っている最中かもしれないので待つ
+if docker logs --since "$idle" "$name" 2>&1 | grep -q '"POST '; then
+    echo "VRAM ${used}MiB だが、${idle} 以内に使われているので待つ"
+    exit 0
+fi
+echo "VRAM ${used}MiB（上限 ${limit}MiB）で、${idle} 使われていないので再起動する"
+docker restart "$name" >/dev/null

@@ -1,0 +1,6 @@
+[Unit]
+Description=使われていない VOICEVOX の VRAM が増えていたら再起動する
+
+[Service]
+Type=oneshot
+ExecStart=%h/src/voice-chat/voicevox-trim

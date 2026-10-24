@@ -48,6 +48,22 @@ Docker を使わない場合は、[公式リリース](https://github.com/VOICEV
 
 つなぎ先とモデルは環境変数で変えられる。一覧は `voice-chat` の先頭のコメントに書いてある。
 
+## VOICEVOX の VRAM を空ける（voicevox-trim）
+
+VOICEVOX は、使った声のモデルを GPU に置いたままにし、一度確保した GPU のメモリも手放さない。
+いろいろな声を使ったり歌わせたりすると、VRAM が 1〜3GB まで増える（起動した直後は 0.2GB ほど）。
+`voicevox-trim` は、voicevox コンテナの VRAM が 1500MiB を超えていて、10 分リクエストがなければ、コンテナを再起動する。
+再起動は数秒で終わる。
+
+```sh
+ln -sf ~/src/voice-chat/systemd/voicevox-trim.service ~/src/voice-chat/systemd/voicevox-trim.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now voicevox-trim.timer   # 5 分おきに見る
+journalctl --user -u voicevox-trim                  # 再起動したかどうか
+```
+
+上限は `VOICEVOX_TRIM_MIB`、待つ時間は `VOICEVOX_TRIM_IDLE`（既定 `10m`）で変えられる。
+
 ## キャラクター
 
 `characters.toml` に、名前・呼び名・VOICEVOX の声・話す速さ・人物像を書く。
